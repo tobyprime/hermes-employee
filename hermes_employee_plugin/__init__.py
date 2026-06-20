@@ -53,7 +53,6 @@ def register(ctx) -> None:
     _register_tools(ctx)
 
     # ── Lifecycle hooks ──────────────────────────────────────
-    ctx.register_hook("on_session_end", employee_hooks.on_session_end)
 
     # ── Message auto-injection hooks ─────────────────────────
     ctx.register_hook("post_llm_call", employee_hooks.on_post_llm_call)

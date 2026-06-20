@@ -168,14 +168,6 @@ def on_post_llm_call(
     _start_polling(session_id)
 
 
-def on_session_end(
-    session_id: str = "",
-    **kwargs: Any,
-) -> None:
-    """Session 结束：清理轮询线程。"""
-    _stop_polling()
-
-
 def _inject(content: str) -> None:
     if not _plugin_ctx or not content:
         return
