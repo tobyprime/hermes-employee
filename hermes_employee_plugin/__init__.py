@@ -2,14 +2,18 @@
 
 Registers tools, lifecycle hooks, slash commands, and skill for
 integrating the employee message system into Hermes Agent.
+
+消息投递：所有 employee_* 工具 handler 返回后自动检查 DB 新消息，
+确认已读、渲染、追加到工具结果中，无需 AI 主动调用 employee_check。
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
+from employee.config import session_db_path as _session_db_path
+from ._common import check_and_format
 from . import hooks as employee_hooks
 from . import tools as employee_tools
 
@@ -17,15 +21,18 @@ logger = logging.getLogger("hermes_employee_plugin")
 
 
 def _with_brief(handler):
-    """Wrapper: 在工具结果末尾追加缓冲区中的轮内消息，实现"不打断、随结果送达"。
+    """Wrapper: 在每个工具结果末尾自动检查并追加新消息简报。
 
-    post_tool_call 将新消息存入缓冲区，下个 tool handler 返回时由本 wrapper
-    自动附加到结果中。无需额外回调或 inject 打断。
+    handler 返回后立即读 DB、确认已读、渲染模板，内容追加到结果中。
+    无新消息时不追加（不改变结果），handler 自身返回空字符串时也填入。
     """
     def wrapped(*args, **kw):
         result = handler(*args, **kw)
         sid = kw.get("session_id", "")
-        brief = employee_hooks.drain_pending_brief(sid)
+        if not sid:
+            return result
+        db_path = _session_db_path(sid)
+        brief = check_and_format(db_path, sid, brief_key="brief")
         if brief:
             if result:
                 result = result.rstrip() + "\n\n---\n\n" + brief
@@ -37,15 +44,15 @@ def _with_brief(handler):
 
 def register(ctx) -> None:
     """Plugin entry point — called by Hermes Agent at startup."""
-    # Set context reference for hooks
     employee_hooks._set_plugin_ctx(ctx)
 
-    # Monkey-patch register_tool 自动将 _with_brief 应用到所有工具 handler，
-    # 无需每个注册点手动包裹，新工具也不会漏掉。
+    # Monkey-patch register_tool 自动将 _with_brief 应用到所有工具 handler
     _original_register = ctx.register_tool
     def _auto_wrap(*a, handler=None, **kw):
         if handler is not None:
-            kw["handler"] = _with_brief(handler)
+            # employee_check 自己已从 DB 读取消息，避免双重读取
+            if kw.get("name") != "employee_check":
+                kw["handler"] = _with_brief(handler)
         return _original_register(*a, **kw)
     ctx.register_tool = _auto_wrap
 
@@ -53,11 +60,8 @@ def register(ctx) -> None:
     _register_tools(ctx)
 
     # ── Lifecycle hooks ──────────────────────────────────────
-
-    # ── Message auto-injection hooks ─────────────────────────
     ctx.register_hook("post_llm_call", employee_hooks.on_post_llm_call)
     ctx.register_hook("pre_llm_call", employee_hooks.on_pre_llm_call)
-    ctx.register_hook("post_tool_call", employee_hooks.on_post_tool_call)
 
     # ── Slash command ────────────────────────────────────────
     ctx.register_command(
@@ -104,7 +108,7 @@ def _register_tools(ctx) -> None:
         toolset="employee",
         schema={
             "name": "employee_check",
-            "description": "检查是否有新消息。每执行完一步工具调用后都应调用此工具检查接收到的消息。返回格式化后的消息简报。",
+            "description": "手动检查最新消息。通常不需要主动调用，因每次工具调用后会自动检查。",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
         handler=lambda args, **kw: employee_tools.tool_check(kwargs=kw),
@@ -214,23 +218,6 @@ def _register_tools(ctx) -> None:
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
         handler=lambda args, **kw: employee_tools.tool_source_status(),
-    )
-
-    ctx.register_tool(
-        name="employee_background_status",
-        toolset="employee",
-        schema={
-            "name": "employee_background_status",
-            "description": "查询后台任务状态及日志。当工具因超过超时阈值转入后台执行时，通过此工具查询进度和结果。留空则列出所有运行中的后台任务。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "后台任务 ID，如 bg-a1b2c3d4-1234567890。留空则列出所有运行中的后台任务。"},
-                },
-                "required": [],
-            },
-        },
-        handler=lambda args, **kw: employee_tools.tool_background_status(task_id=args.get("task_id", ""), kwargs=kw),
     )
 
 

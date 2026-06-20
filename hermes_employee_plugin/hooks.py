@@ -1,9 +1,10 @@
 """Lifecycle hooks for the Hermes Employee plugin.
 
-消息投递策略：
-1. on_post_tool_call — 轮内：检查新消息，存入缓冲区。由 tool handler wrapper 追加到结果中。
-2. on_post_llm_call — 轮间：启动轮询线程等待新消息，有消息则 inject_message 投递。
-3. on_pre_llm_call — 新一轮开始前，停止轮询。
+消息投递：
+- 轮内：_with_brief wrapper 在每个工具 handler 返回后自动检查 DB、确认已读、
+  渲染模板，追加到工具结果中。
+- 轮间：on_post_llm_call 启动轮询线程等待新消息，有则 inject_message 投递。
+- on_pre_llm_call 在新一轮开始前停止轮询。
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from typing import Any
 
 from employee.config import session_db_path as _session_db_path
 from ._common import check_and_format
-from .background import check_completed_background_tasks
 
 logger = logging.getLogger("hermes_employee_plugin.hooks")
 
@@ -23,10 +23,6 @@ _plugin_ctx: Any = None
 # 显式激活的 session 集合
 _activated_sessions: set[str] = set()
 _activated_lock = threading.Lock()
-
-# 轮内消息缓冲区：session_id → formatted brief
-_pending_briefs: dict[str, str] = {}
-_pending_lock = threading.Lock()
 
 # 轮间轮询
 _poll_thread: threading.Thread | None = None
@@ -52,17 +48,6 @@ def mark_deactivated(session_id: str) -> None:
     with _activated_lock:
         _activated_sessions.discard(session_id)
     _stop_polling()
-
-
-# ── 轮内缓冲区 ─────────────────────────────────────────────
-
-
-def drain_pending_brief(session_id: str) -> str:
-    """取出并清除轮内消息缓冲区。由 tool handler wrapper 在返回前调用。"""
-    if not session_id:
-        return ""
-    with _pending_lock:
-        return _pending_briefs.pop(session_id, "")
 
 
 # ── 轮间轮询 ──────────────────────────────────────────────
@@ -94,8 +79,6 @@ def _poll_loop(session_id: str) -> None:
         if not is_activated(session_id):
             return
 
-        check_completed_background_tasks()
-
         brief = check_and_format(db_path, session_id)
         if brief:
             _inject(brief)
@@ -117,27 +100,6 @@ def on_pre_llm_call(
     _stop_polling()
 
 
-def on_post_tool_call(
-    tool_name: str = "",
-    args: dict | None = None,
-    result: Any = None,
-    task_id: str = "",
-    session_id: str = "",
-    **kwargs: Any,
-) -> None:
-    """轮内：每次工具调用后检查新消息，存入缓冲区（不 inject 打断）。"""
-    if not session_id or not is_activated(session_id):
-        return
-
-    check_completed_background_tasks()
-
-    db_path = _session_db_path(session_id)
-    brief = check_and_format(db_path, session_id)
-    if brief:
-        with _pending_lock:
-            _pending_briefs[session_id] = brief
-
-
 def on_post_llm_call(
     session_id: str = "",
     completed: bool = True,
@@ -147,17 +109,11 @@ def on_post_llm_call(
     """轮间：LLM 调用结束后启动轮询，等待新消息。"""
     if not session_id or not is_activated(session_id):
         return
+
     if not _plugin_ctx:
         return
 
-    # 先尝试投递缓冲区消息（上一轮产的但没通过 tool 结果送出的）
-    leftover = drain_pending_brief(session_id)
-    if leftover:
-        _inject(leftover)
-        return
-
-    # 再做一次即时检查
-    check_completed_background_tasks()
+    # 即时检查
     db_path = _session_db_path(session_id)
     brief = check_and_format(db_path, session_id)
     if brief:

@@ -22,7 +22,6 @@ from employee.config import session_db_path as _session_db_path
 from employee.filter import classify_message
 from employee.yaml_config import get_config_value, set_config_value, add_rule, remove_rule, list_rules
 from ._common import check_and_format
-from .background import tool_background_status
 
 logger = logging.getLogger("hermes_employee_plugin.tools")
 
@@ -55,10 +54,7 @@ def tool_activate(kwargs: dict | None = None) -> str:
     if not sid:
         return json.dumps({"ok": False, "error": "session_id not found"})
 
-    from .hooks import mark_activated
-
     _do_activate(sid)
-    mark_activated(sid)
 
     db_path = _session_db_path(sid)
     cursor = _session_db.get_read_cursor(db_path)
