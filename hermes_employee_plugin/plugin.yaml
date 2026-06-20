@@ -1,0 +1,7 @@
+name: hermes-employee
+version: "0.2.0"
+description: "多渠道消息聚合系统 — 接收 GitHub Webhook/Inbox、钉钉通知，通过工具向 Hermes Agent 投递消息。支持待办事项管理系统。"
+author: "@toby"
+hooks:
+  - on_session_start
+  - on_session_end

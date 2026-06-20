@@ -1,0 +1,23 @@
+services:
+  hermes:
+    build: .
+    image: hermes-employee:latest
+    container_name: hermes-employee
+    stdin_open: true
+    tty: true
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - GH_TOKEN=${GH_TOKEN:-}
+      - DINGTALK_POLL_INTERVAL=${DINGTALK_POLL_INTERVAL:-5}
+      - HERMES_EMPLOYEE_IDLE_DURATION=${HERMES_EMPLOYEE_IDLE_DURATION:-30}
+      - HERMES_EMPLOYEE_SLEEP_DURATION=${HERMES_EMPLOYEE_SLEEP_DURATION:-60}
+      - HERMES_EMPLOYEE_TOOL_TIMEOUT=${HERMES_EMPLOYEE_TOOL_TIMEOUT:-30}
+    volumes:
+      - hermes-config:/root/.hermes
+      - workspace:/workspace
+    working_dir: /workspace
+
+volumes:
+  hermes-config:
+  workspace:

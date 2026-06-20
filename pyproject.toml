@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-employee"
+version = "0.2.0"
+description = "Hermes Employee - 多渠道消息聚合系统（Hermes Agent Plugin）"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+hemployee = "employee.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["employee*", "hermes_employee_plugin*"]
+
+[project.entry-points."hermes_agent.plugins"]
+hermes-employee = "hermes_employee_plugin"

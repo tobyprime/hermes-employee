@@ -1,0 +1,14 @@
+__pycache__
+.pytest_cache
+*.egg-info
+tests/
+.git
+.gitignore
+*.pyc
+**/__pycache__
+.claude/
+.codegraph/
+.venv/
+venv/
+*.md
+node_modules/
