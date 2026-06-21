@@ -139,15 +139,7 @@ def _inject(content: str) -> None:
         return
     logger.info("_inject: len=%d preview=%r", len(content), content[:200])
     try:
-        # Directly push to _pending_input instead of calling inject_message,
-        # which routes based on _agent_running and may send to _interrupt_queue
-        # when the timing window is tight. _pending_input is always consumed
-        # by process_loop.
-        cli = _plugin_ctx._manager._cli_ref
-        if cli is None:
-            logger.warning("_inject: no CLI reference")
-            return
-        cli._pending_input.put(content)
+        _plugin_ctx.inject_message(content, role="user")
     except Exception as exc:
-        logger.error("_inject failed (%s); undelivered (%d chars): %s",
+        logger.error("inject_message failed (%s); undelivered (%d chars): %s",
                      exc, len(content), content[:500])
