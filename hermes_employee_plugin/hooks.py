@@ -69,18 +69,22 @@ def _start_polling(session_id: str) -> None:
         target=_poll_loop, args=(session_id,), daemon=True,
     )
     _poll_thread.start()
+    logger.info("poll thread started for session %s", session_id)
 
 
 def _poll_loop(session_id: str) -> None:
     """轮询中央 DB，有新消息则 inject 并退出。"""
+    logger.info("poll loop entered for session %s", session_id)
     db_path = _session_db_path(session_id)
 
     while not _poll_stop.is_set():
         if not is_activated(session_id):
+            logger.info("poll loop: session deactivated, exiting")
             return
 
         brief = check_and_format(db_path, session_id)
         if brief:
+            logger.info("poll loop: found messages, injecting")
             _inject(brief)
             return
 
@@ -108,19 +112,25 @@ def on_post_llm_call(
 ) -> None:
     """轮间：LLM 调用结束后启动轮询，等待新消息。"""
     if not session_id or not is_activated(session_id):
+        logger.info("on_post_llm_call: skipped (not activated) session_id=%r", session_id)
         return
 
     if not _plugin_ctx:
+        logger.info("on_post_llm_call: skipped (no plugin ctx)")
         return
+
+    logger.info("on_post_llm_call: session_id=%s completed=%s", session_id, completed)
 
     # 即时检查
     db_path = _session_db_path(session_id)
     brief = check_and_format(db_path, session_id)
     if brief:
+        logger.info("on_post_llm_call: found immediate messages, injecting")
         _inject(brief)
         return
 
     # 无即时消息，启动轮询
+    logger.info("on_post_llm_call: no immediate messages, starting poll")
     _start_polling(session_id)
 
 
