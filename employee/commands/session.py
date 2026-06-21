@@ -37,7 +37,7 @@ def _is_main_agent() -> bool:
 
 
 def _session_id() -> str | None:
-    return os.environ.get("HERMES_AGENT_SESSION_ID")
+    return os.environ.get("HERMES_SESSION_ID")
 
 
 def _session_db_path(session_id: str) -> str:
@@ -48,7 +48,7 @@ def _session_db_path(session_id: str) -> str:
 def _require_session_db():
     sid = _session_id()
     if not sid:
-        print("HERMES_AGENT_SESSION_ID not set", file=sys.stderr)
+        print("HERMES_SESSION_ID not set", file=sys.stderr)
         sys.exit(1)
     db_path = _session_db_path(sid)
     if not Path(db_path).exists():
@@ -61,7 +61,7 @@ def _require_session_db():
 def cmd_start(args):
     sid = _session_id()
     if not sid:
-        print("HERMES_AGENT_SESSION_ID not set", file=sys.stderr)
+        print("HERMES_SESSION_ID not set", file=sys.stderr)
         sys.exit(1)
     db_path = _session_db_path(sid)
     session_db.init_session_db(db_path)
@@ -76,7 +76,7 @@ def cmd_start(args):
 def cmd_stop(args):
     sid = _session_id()
     if not sid:
-        print("HERMES_AGENT_SESSION_ID not set", file=sys.stderr)
+        print("HERMES_SESSION_ID not set", file=sys.stderr)
         sys.exit(1)
     db_path = _session_db_path(sid)
     if Path(db_path).exists():

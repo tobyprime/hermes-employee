@@ -51,7 +51,7 @@ def activated_session(temp_sessions_dir, temp_central_db, sid):
 
 def _with_session(session_id: str, *extra_patches):
     ctx = (
-        patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": session_id}, clear=False),
+        patch.dict(os.environ, {"HERMES_SESSION_ID": session_id}, clear=False),
         patch(f"{_MESSAGE}._is_main_agent", return_value=True),
     ) + extra_patches
     return contextlib.ExitStack() if not extra_patches else contextlib.ExitStack()
@@ -70,7 +70,7 @@ class TestCmdWaitDuration:
         with (
             patch.object(config, "IDLE_DURATION", idle),
             patch.object(config, "SLEEP_DURATION", sleep),
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": "test"}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": "test"}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch.object(Path, "exists", return_value=True),
             patch(f"{_MESSAGE}.session_db") as mock_session_db,
@@ -105,7 +105,7 @@ class TestCmdWaitPopups:
         central_db.insert_message(str(config.CENTRAL_DB), "test.type", "Popup!", "urgent", category="popup")
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.time.sleep") as mock_sleep,
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
@@ -126,7 +126,7 @@ class TestCmdWaitPopups:
             return []
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch.object(config, "IDLE_DURATION", 10),
             patch.object(config, "SLEEP_DURATION", 10),
@@ -176,7 +176,7 @@ class TestCmdWaitPopups:
                 phase[0] = 2
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch.object(config, "IDLE_DURATION", 10),
             patch.object(config, "SLEEP_DURATION", 10),
@@ -206,7 +206,7 @@ class TestCmdWaitExitConditions:
 
     def test_no_session_db(self):
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": "no-such-session"}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": "no-such-session"}, clear=False),
             patch.object(Path, "exists", return_value=False),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
         ):
@@ -216,7 +216,7 @@ class TestCmdWaitExitConditions:
 
     def test_no_messages_exit_2(self, activated_session, sid):
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch.object(config, "IDLE_DURATION", 1),
             patch.object(config, "SLEEP_DURATION", 1),
@@ -229,7 +229,7 @@ class TestCmdWaitExitConditions:
 
     def test_child_agent_silent(self):
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": "test"}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": "test"}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=False),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
         ):
@@ -243,7 +243,7 @@ class TestCmdPeek:
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Peek msg", "content", category="normal")
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
         ):
@@ -253,7 +253,7 @@ class TestCmdPeek:
 
     def test_peek_no_messages_silent(self, activated_session, temp_central_db, sid):
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
         ):
@@ -264,7 +264,7 @@ class TestCmdPeek:
         cooldown_file = Path(temp_sessions_dir) / f"{sid}.peek_ts"
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch.object(config, "PEEK_COOLDOWN", 10),
         ):
@@ -277,7 +277,7 @@ class TestCmdPeek:
         cooldown_file = Path(temp_sessions_dir) / f"{sid}.peek_ts"
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=False),
             patch.object(config, "PEEK_COOLDOWN", 10),
         ):
@@ -295,7 +295,7 @@ class TestCmdWaitRegressions:
                     sleep_count[0] += 1
 
                 with (
-                    patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": "reg-test"}, clear=False),
+                    patch.dict(os.environ, {"HERMES_SESSION_ID": "reg-test"}, clear=False),
                     patch(f"{_MESSAGE}._is_main_agent", return_value=True),
                     patch.object(Path, "exists", return_value=True),
                     patch(f"{_MESSAGE}.session_db") as mock_session_db,
@@ -318,7 +318,7 @@ class TestCmdWaitRegressions:
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Popup!", "", category="popup")
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit),
             patch("builtins.print") as mock_print,
@@ -337,7 +337,7 @@ class TestCmdStartAutoClose:
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Old popup", "", category="popup")
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Normal msg", "", category="normal")
 
-        with patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False):
+        with patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False):
             cli.cmd_start(None)
 
         db_path = cli._session_db_path(sid)
@@ -348,11 +348,11 @@ class TestCmdStartAutoClose:
         sid = "new-session"
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Old normal", "", category="normal")
 
-        with patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False):
+        with patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False):
             cli.cmd_start(None)
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
             patch(f"{_MESSAGE}._touch_peek_cooldown"),
@@ -368,7 +368,7 @@ class TestCmdClose:
         msg_id = central_db.insert_message(str(config.CENTRAL_DB), "test", "Popup!", "", category="popup")
         args = MagicMock(ids=f"{msg_id}")
 
-        with patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False):
+        with patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False):
             cli.cmd_close(args)
 
         assert session_db.get_open_popups(db_path) == set()
@@ -381,7 +381,7 @@ class TestCmdClose:
 
         args = MagicMock(ids=None)
 
-        with patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False):
+        with patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False):
             cli.cmd_close(args)
 
         assert p1 not in session_db.get_open_popups(db_path)
@@ -390,7 +390,7 @@ class TestCmdClose:
     def test_close_no_popups_silent(self, activated_session, sid):
         args = MagicMock(ids=None)
 
-        with patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False):
+        with patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False):
             cli.cmd_close(args)
 
 
@@ -399,7 +399,7 @@ class TestCmdWaitPopupCloseFilter:
         central_db.insert_message(str(config.CENTRAL_DB), "test", "Popup!", "", category="popup")
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit),
             patch(f"{_MESSAGE}.time.sleep"),
@@ -416,7 +416,7 @@ class TestCmdWaitPopupCloseFilter:
         session_db.close_popups(db_path, [msg_id])
 
         with (
-            patch.dict(os.environ, {"HERMES_AGENT_SESSION_ID": sid}, clear=False),
+            patch.dict(os.environ, {"HERMES_SESSION_ID": sid}, clear=False),
             patch(f"{_MESSAGE}._is_main_agent", return_value=True),
             patch(f"{_MESSAGE}.sys.exit", side_effect=SystemExit) as mock_exit,
             patch(f"{_MESSAGE}.time.sleep"),

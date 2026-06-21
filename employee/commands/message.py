@@ -17,7 +17,7 @@ from .session import _is_main_agent, _require_session_db, _session_db_path, _rea
 
 
 def _session_id():
-    return os.environ.get("HERMES_AGENT_SESSION_ID")
+    return os.environ.get("HERMES_SESSION_ID")
 
 
 def cmd_send(args):
@@ -259,7 +259,7 @@ def cmd_peek(args):
 def cmd_close(args):
     sid = _session_id()
     if not sid:
-        print("HERMES_AGENT_SESSION_ID not set", file=sys.stderr)
+        print("HERMES_SESSION_ID not set", file=sys.stderr)
         sys.exit(1)
 
     db_path = _session_db_path(sid)
@@ -287,7 +287,7 @@ def cmd_close(args):
 def cmd_mark_done(args):
     sid = _session_id()
     if not sid:
-        print("HERMES_AGENT_SESSION_ID not set", file=sys.stderr)
+        print("HERMES_SESSION_ID not set", file=sys.stderr)
         sys.exit(1)
 
     db_path = _session_db_path(sid)
@@ -352,7 +352,7 @@ def cmd_debug_hook(args):
     status = "✅ MAIN AGENT" if _is_main_agent() else "⚠️  SUB AGENT"
     print("=" * 40, file=sys.stderr)
     print(f"  _is_main_agent() = {status}", file=sys.stderr)
-    print(f"  HERMES_AGENT_SESSION_ID = {os.environ.get('HERMES_AGENT_SESSION_ID', 'N/A')}", file=sys.stderr)
+    print(f"  HERMES_SESSION_ID = {os.environ.get('HERMES_SESSION_ID', 'N/A')}", file=sys.stderr)
     print(f"  子进程SESSION in stdin = {data.get('session_id', 'N/A')}", file=sys.stderr)
     print(f"  Full stdin JSON:", file=sys.stderr)
     print(f"  {json.dumps(data, indent=2, ensure_ascii=False)}", file=sys.stderr)
