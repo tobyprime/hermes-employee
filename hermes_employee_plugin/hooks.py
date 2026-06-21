@@ -138,8 +138,11 @@ def _inject(content: str) -> None:
     if not _plugin_ctx or not content:
         return
     logger.info("_inject: len=%d preview=%r", len(content), content[:200])
-    try:
-        _plugin_ctx.inject_message(content, role="user")
-    except Exception as exc:
-        logger.error("inject_message failed (%s); undelivered (%d chars): %s",
-                     exc, len(content), content[:500])
+
+    cli = _plugin_ctx._manager._cli_ref
+    if cli is None:
+        logger.error("_inject: no CLI ref (gateway mode?), undelivered (%d chars): %s",
+                     len(content), content[:500])
+        return
+
+    cli._pending_input.put(content)
