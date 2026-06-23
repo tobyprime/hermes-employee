@@ -72,7 +72,7 @@ def check_and_format(
     try:
         _todo_logic.check_and_emit_reminders(db_path)
     except Exception:
-        pass
+        logger.exception("check_and_format: todo reminder check failed db=%s", db_path)
 
     popups, msgs = fetch_and_ack(db_path, sid)
     if not popups and not msgs:

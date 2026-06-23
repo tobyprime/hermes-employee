@@ -29,12 +29,6 @@ def _read_hook_input():
     return _HOOK_INPUT_CACHE
 
 
-def _is_main_agent() -> bool:
-    data = _read_hook_input()
-    if data.get("agent_id") is not None:
-        return False
-    return True
-
 
 def _session_id() -> str | None:
     return os.environ.get("HERMES_SESSION_ID")

@@ -13,7 +13,7 @@ if sys.stderr.encoding and sys.stderr.encoding.upper() not in ("UTF-8", "UTF8"):
 from . import config
 from .commands.session import (
     cmd_start, cmd_stop, cmd_list_sessions,
-    _session_id, _is_main_agent, _session_db_path, _require_session_db, _read_hook_input,
+    _session_id, _session_db_path, _require_session_db, _read_hook_input,
 )
 from .commands.message import cmd_wait, cmd_peek, cmd_send, cmd_close, cmd_mark_done, cmd_history, cmd_debug_hook
 from .commands.todo import (

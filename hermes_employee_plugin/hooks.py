@@ -1,7 +1,7 @@
 """Lifecycle hooks for the Hermes Employee plugin.
 
 消息投递：
-- 轮内：_with_brief wrapper 在每个工具 handler 返回后自动检查 DB、确认已读、
+- 轮内：transform_tool_result hook 在每个工具返回后自动检查 DB、确认已读、
   渲染模板，追加到工具结果中。
 - 轮间：on_post_llm_call 启动轮询线程等待新消息，有则 inject_message 投递。
 - on_pre_llm_call 在新一轮开始前停止轮询。
@@ -12,6 +12,8 @@ from __future__ import annotations
 import logging
 import threading
 from typing import Any
+
+from pathlib import Path as _Path
 
 from employee.config import session_db_path as _session_db_path
 from ._common import check_and_format
@@ -91,6 +93,45 @@ def _poll_loop(session_id: str) -> None:
         _poll_stop.wait(1)
 
 
+# ── Transform tool result（替代 _patch_dispatch）───────────────
+
+
+def on_transform_tool_result(
+    tool_name: str = "",
+    arguments: dict | None = None,
+    result: str | None = None,
+    task_id: str | None = None,
+    **kwargs: Any,
+) -> str | None:
+    """工具返回后自动检查并追加消息简报（替代之前的 dispatch monkey-patch）。"""
+    sid = kwargs.get("session_id", "")
+    if not sid or not is_activated(sid):
+        return None
+
+    try:
+        db_path = _session_db_path(sid)
+        if not _Path(db_path).exists():
+            return None
+    except Exception:
+        return None
+
+    try:
+        brief = check_and_format(db_path, sid, brief_key="brief")
+        if brief:
+            logger.info(
+                "transform_tool_result: appended brief (%d chars) after tool=%r session=%s",
+                len(brief), tool_name, sid,
+            )
+            if result:
+                return result.rstrip() + "\n\n---\n\n" + brief
+            return brief
+        logger.debug("transform_tool_result: no new messages tool=%r session=%s", tool_name, sid)
+    except Exception:
+        logger.exception("transform_tool_result: check_and_format failed tool=%r session=%s", tool_name, sid)
+
+    return None
+
+
 # ── Lifecycle hooks ─────────────────────────────────────────
 
 
@@ -100,7 +141,9 @@ def on_pre_llm_call(
 ) -> None:
     """新一轮即将开始：停止轮询线程。"""
     if not session_id or not is_activated(session_id):
+        logger.debug("on_pre_llm_call: skipped (not activated) session_id=%r", session_id)
         return
+    logger.info("on_pre_llm_call: stopping poll session=%s", session_id)
     _stop_polling()
 
 

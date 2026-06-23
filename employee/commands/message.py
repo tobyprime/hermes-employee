@@ -13,7 +13,7 @@ from .. import todo as todo_logic
 from ..filter import classify_message
 from ..template import render_brief
 from ..yaml_config import load_config
-from .session import _is_main_agent, _require_session_db, _session_db_path, _read_hook_input
+from .session import _require_session_db, _session_db_path, _read_hook_input
 
 
 def _session_id():
@@ -52,9 +52,6 @@ def cmd_wait(args):
     sid = _session_id()
     if not sid:
         sys.exit(0)
-    if not _is_main_agent():
-        sys.exit(0)
-
     db_path = _session_db_path(sid)
     if not Path(db_path).exists():
         sys.exit(0)
@@ -206,8 +203,6 @@ def cmd_peek(args):
     sid = _session_id()
     if not sid:
         return
-    if not _is_main_agent():
-        return
     if _check_peek_cooldown(sid):
         return
     _touch_peek_cooldown(sid)
@@ -349,9 +344,10 @@ def cmd_history(args):
 
 def cmd_debug_hook(args):
     data = _read_hook_input()
-    status = "✅ MAIN AGENT" if _is_main_agent() else "⚠️  SUB AGENT"
+    agent_id = data.get("agent_id")
+    status = "MAIN AGENT" if agent_id is None else f"SUB AGENT (agent_id={agent_id!r})"
     print("=" * 40, file=sys.stderr)
-    print(f"  _is_main_agent() = {status}", file=sys.stderr)
+    print(f"  agent status  = {status}", file=sys.stderr)
     print(f"  HERMES_SESSION_ID = {os.environ.get('HERMES_SESSION_ID', 'N/A')}", file=sys.stderr)
     print(f"  子进程SESSION in stdin = {data.get('session_id', 'N/A')}", file=sys.stderr)
     print(f"  Full stdin JSON:", file=sys.stderr)
